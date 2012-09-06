@@ -17,6 +17,11 @@ const PARAMS = {
   g: new BigInt("14887492224963187634282421537186040801304008017743492304481737382571933937568724473847106029915040150784031882206090286938661464458896494215273989547889201144857352611058572236578734319505128042602372864570426550855201448111746579871811249114781674309062693442442368697449970648232621880001709535143047913661432883287150003429802392229361583608686643243349727791976247247948618930423866180410558458272606627111270040091203073580238905303994472202930783207472394578498507764703191288249547659899997131166130259700604433891232298182348403175947450284433411265966789131024573629546048637848902243503970966798589660808533")
 };
 
+var LIST_OF_PLAINTEXTS = [BigInt.ONE, new BigInt("2"), new BigInt("3"), new BigInt("4")];
+LIST_OF_PLAINTEXTS.forEach(function(p, i) {
+  LIST_OF_PLAINTEXTS[i] = new ElGamal.Plaintext(p);
+});
+
 
 // additional utils
 assert.isBigInt = function(bi) {
@@ -56,6 +61,13 @@ assert.isDDHProof = function(proof) {
 
   assert.isBigInt(proof.challenge);
   assert.isBigInt(proof.response);
+};
+
+assert.isDisjunctiveProof = function(proof) {
+  assert.isArray(proof.proofs);
+  proof.proofs.forEach(function(p) {
+    assert.isDDHProof(p);
+  });
 };
 
 var SK = null;
@@ -220,6 +232,17 @@ suite.addBatch({
           "which is valid": function(stuffAndProof) {
             assert.isDDHProof(stuffAndProof.proof);
             assert.ok(stuffAndProof.stuff.ciph.verifyProof(new ElGamal.Plaintext(BigInt.TWO), stuffAndProof.proof, CHALLENGE_GENERATOR));
+          }
+        },
+        "and generate a disjunctive proof of encryption" : {
+          topic: function(stuff, sk) {
+            var proof = stuff.ciph.generateDisjunctiveProof(LIST_OF_PLAINTEXTS, 0, stuff.r, CHALLENGE_GENERATOR);
+
+            return {stuff: stuff, proof: proof};
+          },
+          "which is valid": function(stuffAndProof) {
+            assert.isDisjunctiveProof(stuffAndProof.proof);
+            assert.ok(LIST_OF_PLAINTEXTS, stuffAndProof.proof, CHALLENGE_GENERATOR);
           }
         }
       }

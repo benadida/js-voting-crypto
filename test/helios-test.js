@@ -27,10 +27,16 @@ suite.addBatch({
       assert.isString(election.name);
       assert.isArray(election.questions);
     },
-    "re-serialization works": function(election) {
-      // going to fail cause of spaces. blarg
-      // FIXME: figure out how to reenable this
-      // assert.equal(election.toJSON(), ELECTION_JSON);
+    // we don't expect canonicalization anymore
+    "re-serialization and re-deserialization yields same fields": function(election) {
+      var reparsed_fields = JSON.parse(election.toJSON());
+      assert.isObject(reparsed_fields);
+      assert.isString(reparsed_fields.cast_url);
+      assert.isString(reparsed_fields.uuid);
+      assert.isString(reparsed_fields.description);
+      assert.isString(reparsed_fields.short_name);
+      assert.isString(reparsed_fields.name);
+      assert.isArray(reparsed_fields.questions);
     },
     "create an encrypted answer": {
       topic: function(election) {

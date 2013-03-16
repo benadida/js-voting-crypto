@@ -48,25 +48,32 @@ assert.isCiphertext = function(ciphertext) {
   assert.isPublicKey(ciphertext.pk);
 };
 
-assert.isDLogProof = function(proof) {
+assert.isDLogProof = function(proof, pk) {
   assert.isBigInt(proof.commitment);
   assert.isBigInt(proof.challenge);
   assert.isBigInt(proof.response);
+
+  assert.ok(proof.challenge.compareTo(pk.q) < 0);
+  assert.ok(proof.response.compareTo(pk.q) < 0);
+  assert.ok(proof.commitment.compareTo(pk.p) < 0);
 };
 
-assert.isDDHProof = function(proof) {
+assert.isDDHProof = function(proof, pk) {
   assert.isObject(proof.commitment);
   assert.isBigInt(proof.commitment.A);
   assert.isBigInt(proof.commitment.B);
 
   assert.isBigInt(proof.challenge);
   assert.isBigInt(proof.response);
+  
+  assert.ok(proof.challenge.compareTo(pk.q) < 0);
+  assert.ok(proof.response.compareTo(pk.q) < 0);
 };
 
-assert.isDisjunctiveProof = function(proof) {
+assert.isDisjunctiveProof = function(proof, pk) {
   assert.isArray(proof.proofs);
   proof.proofs.forEach(function(p) {
-    assert.isDDHProof(p);
+    assert.isDDHProof(p, pk);
   });
 };
 
@@ -112,7 +119,7 @@ suite.addBatch({
           return sk.proveKnowledge(CHALLENGE_GENERATOR);
         },
         "which looks good": function(proof) {
-          assert.isDLogProof(proof);
+          assert.isDLogProof(proof, SK.pk);
         },
         "which is valid": function(proof) {
           assert.ok(SK.pk.verifyKnowledgeOfSecretKey(proof, CHALLENGE_GENERATOR));
@@ -149,7 +156,7 @@ suite.addBatch({
             return SK.decryptAndProve(ciphertext, CHALLENGE_GENERATOR);
           },
           "contains a proof" : function(result) {
-            assert.isDDHProof(result.proof);
+            assert.isDDHProof(result.proof, result.plaintext.pk);
           },
           "yields the right plaintext": function(result) {
             assert.ok(BigInt.ONE.equals(result.plaintext.m));
@@ -171,7 +178,7 @@ suite.addBatch({
             assert.isBigInt(result.decryption_factor);
             assert.ok(!BigInt.ONE.equals(result.decryption_factor));
 
-            assert.isDDHProof(result.decryption_proof);
+            assert.isDDHProof(result.decryption_proof, SK.pk);
           },
           "and when it's verified": {
             topic: function(result, ciphertext) {
@@ -212,15 +219,17 @@ suite.addBatch({
           var r = random.randomInteger(sk.pk.q);
           var ciph = ElGamal.encrypt(sk.pk, plaintext, r);
 
-          return {ciph: ciph, r:r, plaintext: plaintext};
+          return {ciph: ciph, r:r, plaintext: plaintext, pk: sk.pk};
         },
         "and generate a proof of encryption": {
           topic: function(stuff, sk) {
             var proof = stuff.ciph.generateProof(stuff.plaintext, stuff.r, CHALLENGE_GENERATOR);
             return {stuff: stuff, proof: proof};
           },
+          "which is well formed": function(stuffAndProof) {
+            assert.isDDHProof(stuffAndProof.proof, stuffAndProof.stuff.pk);
+          },
           "which is valid": function(stuffAndProof) {
-            assert.isDDHProof(stuffAndProof.proof);
             assert.ok(stuffAndProof.stuff.ciph.verifyProof(stuffAndProof.stuff.plaintext, stuffAndProof.proof, CHALLENGE_GENERATOR));
           }
         },
@@ -230,7 +239,7 @@ suite.addBatch({
             return {stuff: stuff, proof: proof};
           },
           "which is valid": function(stuffAndProof) {
-            assert.isDDHProof(stuffAndProof.proof);
+            assert.isDDHProof(stuffAndProof.proof, stuffAndProof.stuff.pk);
             assert.ok(stuffAndProof.stuff.ciph.verifyProof(new ElGamal.Plaintext(BigInt.TWO), stuffAndProof.proof, CHALLENGE_GENERATOR));
           }
         },
@@ -241,7 +250,7 @@ suite.addBatch({
             return {stuff: stuff, proof: proof};
           },
           "which is valid": function(stuffAndProof) {
-            assert.isDisjunctiveProof(stuffAndProof.proof);
+            assert.isDisjunctiveProof(stuffAndProof.proof, stuffAndProof.stuff.pk);
             assert.ok(LIST_OF_PLAINTEXTS, stuffAndProof.proof, CHALLENGE_GENERATOR);
           }
         }

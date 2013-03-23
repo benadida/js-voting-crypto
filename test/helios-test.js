@@ -96,7 +96,7 @@ suite.addBatch({
         }
       }
     },
-    "create an encrypted ballot": {
+    "create an encrypted vote (complete)": {
       topic: function(election) {
         var ev = new HELIOS.EncryptedVote(election, [1,2]);
         return ev;
@@ -134,6 +134,15 @@ suite.addBatch({
         },
         "verifies": function(err, result) {
           assert.ok(result);
+        }
+      },
+      "get an audit trail": {
+        topic: function(ev, election) {
+          return ev.get_audit_trail();
+        },
+        "has the vote": function(audit_trail) {
+          assert.isString(audit_trail.vote);
+          assert.isArray(audit_trail.plaintext_answers);
         }
       },
       "after clearing the plaintexts": {
